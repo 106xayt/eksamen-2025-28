@@ -1,0 +1,38 @@
+{
+  "name": "AWS SAM + Java 12",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": "false",
+      "username": "vscode"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/aws-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/java:1": {
+      "version": "12",
+      "installMaven": "true"
+    }
+  },
+  "postCreateCommand": "python3 -m pip install --upgrade pip pipx && pipx install aws-sam-cli && aws --version && sam --version && java -version && mvn -v && docker --version",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "amazonwebservices.aws-toolkit-vscode",
+        "vscjava.vscode-java-pack",
+        "redhat.java",
+        "vscjava.vscode-maven"
+      ],
+      "settings": {
+        "java.configuration.runtimes": [
+          {
+            "name": "JavaSE-12",
+            "path": "/usr/lib/jvm/msopenjdk-12"
+          }
+        ]
+      }
+    }
+  }
+}
