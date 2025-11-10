@@ -27,197 +27,117 @@ on:
     jobs:
       plan:
         name: PR: fmt / validate / plan
-        runs-on: ubuntu-latest
-        if: github.event_name == 'pull_request'
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
+        name: "Terraform S3 CI"
 
-          - name: Configure AWS credentials
-            uses: aws-actions/configure-aws-credentials@v2
-            with:
-              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-              aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
+        on:
+          pull_request:
+            paths:
+              - 'infra-s3/**'
+              - '.github/**'
 
-          - name: Setup Terraform
-            uses: hashicorp/setup-terraform@v2
-            with:
-              terraform_version: "1.5.0"
+          push:
+            branches: ['main']
+            paths:
+              - 'infra-s3/**'
+              - '.github/**'
 
-          - name: Terraform fmt (check)
-            working-directory: infra-s3
-            run: terraform fmt -check -recursive
-
-          - name: Terraform init (backend configured)
-            working-directory: infra-s3
-            run: |
-              terraform init -backend-config="bucket=pgr301-terraform-state" \
-                -backend-config="region=eu-west-1" \
-                -backend-config="key=infra-s3/terraform.tfstate"
-
-          - name: Terraform validate
-            working-directory: infra-s3
-            run: terraform validate
-
-          - name: Terraform plan
-            working-directory: infra-s3
-            run: |
-              terraform plan -no-color -out=plan.tfplan || true
-              terraform show -no-color plan.tfplan > plan.txt || true
-
-          - name: Upload plan artifact
-            uses: actions/upload-artifact@v4
-            with:
-              name: terraform-plan
-              path: |
-                infra-s3/plan.txt
-                infra-s3/plan.tfplan
-
-          - name: Comment on PR with plan artifact info
-            if: github.event_name == 'pull_request'
-            uses: actions/github-script@v6
-            with:
-              github-token: ${{ secrets.GITHUB_TOKEN }}
-              script: |
-                const issue_number = context.payload.pull_request.number;
-                await github.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number,
-                  body: `Terraform plan for changes is uploaded as an artifact (see Actions -> Artifacts).`,
-                });
-
-      apply:
-        name: Apply on main
-        runs-on: ubuntu-latest
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
-
-          - name: Configure AWS credentials
-            uses: aws-actions/configure-aws-credentials@v2
-            with:
-              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-              aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
-
-          - name: Setup Terraform
-            uses: hashicorp/setup-terraform@v2
-            with:
-              terraform_version: "1.5.0"
-
-          - name: Terraform init (backend configured)
-            working-directory: infra-s3
-            run: |
-              terraform init -backend-config="bucket=pgr301-terraform-state" \
-                -backend-config="region=eu-west-1" \
-                -backend-config="key=infra-s3/terraform.tfstate"
-
-          - name: Terraform apply
-            working-directory: infra-s3
-            env:
-              TF_VAR_bucket_name: ${{ secrets.TF_VAR_bucket_name || '' }}
-            run: terraform apply -auto-approve
-      - '.github/**'
-
-env:
-  TF_IN_AUTOMATION: "true"
-
-jobs:
-  plan:
-    name: PR: fmt / validate / plan
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.5.0"
-
-      - name: Terraform fmt (check)
-        working-directory: infra-s3
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init (backend configured)
-        working-directory: infra-s3
-        run: |
-          terraform init -backend-config="bucket=pgr301-terraform-state" \
-            -backend-config="region=eu-west-1" \
-            -backend-config="key=infra-s3/terraform.tfstate"
-
-      - name: Terraform validate
-        working-directory: infra-s3
-        run: terraform validate
-
-      - name: Terraform plan
-        working-directory: infra-s3
-        run: |
-          terraform plan -no-color -out=plan.tfplan || true
-          terraform show -no-color plan.tfplan > plan.txt || true
-
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-plan
-          path: |
-            infra-s3/plan.txt
-            infra-s3/plan.tfplan
-
-      - name: Comment on PR with plan artifact info
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const issue_number = context.payload.pull_request.number;
-            await github.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number,
-              body: `Terraform plan for changes is uploaded as an artifact (see Actions -> Artifacts).`,
-            });
-
-  apply:
-    name: Apply on main
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: "1.5.0"
-
-      - name: Terraform init (backend configured)
-        working-directory: infra-s3
-        run: |
-          terraform init -backend-config="bucket=pgr301-terraform-state" \
-            -backend-config="region=eu-west-1" \
-            -backend-config="key=infra-s3/terraform.tfstate"
-
-      - name: Terraform apply
-        working-directory: infra-s3
         env:
-          TF_VAR_bucket_name: ${{ secrets.TF_VAR_bucket_name || '' }}
-        run: terraform apply -auto-approve
+          TF_IN_AUTOMATION: "true"
+
+        jobs:
+          plan:
+            name: PR: fmt / validate / plan
+            runs-on: ubuntu-latest
+            if: github.event_name == 'pull_request'
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+
+              - name: Configure AWS credentials
+                uses: aws-actions/configure-aws-credentials@v2
+                with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
+
+              - name: Setup Terraform
+                uses: hashicorp/setup-terraform@v2
+                with:
+                  terraform_version: "1.5.0"
+
+              - name: Terraform fmt (check)
+                working-directory: infra-s3
+                run: terraform fmt -check -recursive
+
+              - name: Terraform init (backend configured)
+                working-directory: infra-s3
+                run: |
+                  terraform init -backend-config="bucket=pgr301-terraform-state" \
+                    -backend-config="region=eu-west-1" \
+                    -backend-config="key=infra-s3/terraform.tfstate"
+
+              - name: Terraform validate
+                working-directory: infra-s3
+                run: terraform validate
+
+              - name: Terraform plan
+                working-directory: infra-s3
+                run: |
+                  terraform plan -no-color -out=plan.tfplan || true
+                  terraform show -no-color plan.tfplan > plan.txt || true
+
+              - name: Upload plan artifact
+                uses: actions/upload-artifact@v4
+                with:
+                  name: terraform-plan
+                  path: |
+                    infra-s3/plan.txt
+                    infra-s3/plan.tfplan
+
+              - name: Comment on PR with plan artifact info
+                if: github.event_name == 'pull_request'
+                uses: actions/github-script@v6
+                with:
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+                  script: |
+                    const issue_number = context.payload.pull_request.number;
+                    await github.issues.createComment({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      issue_number,
+                      body: `Terraform plan for changes is uploaded as an artifact (see Actions -> Artifacts).`,
+                    });
+
+          apply:
+            name: Apply on main
+            runs-on: ubuntu-latest
+            if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+            steps:
+              - name: Checkout
+                uses: actions/checkout@v4
+
+              - name: Configure AWS credentials
+                uses: aws-actions/configure-aws-credentials@v2
+                with:
+                  aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+                  aws-region: ${{ secrets.AWS_REGION || 'eu-west-1' }}
+
+              - name: Setup Terraform
+                uses: hashicorp/setup-terraform@v2
+                with:
+                  terraform_version: "1.5.0"
+
+              - name: Terraform init (backend configured)
+                working-directory: infra-s3
+                run: |
+                  terraform init -backend-config="bucket=pgr301-terraform-state" \
+                    -backend-config="region=eu-west-1" \
+                    -backend-config="key=infra-s3/terraform.tfstate"
+
+              - name: Terraform apply
+                working-directory: infra-s3
+                env:
+                  TF_VAR_bucket_name: ${{ secrets.TF_VAR_bucket_name || '' }}
+                run: terraform apply -auto-approve
+
