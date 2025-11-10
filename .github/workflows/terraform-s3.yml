@@ -71,13 +71,18 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issue_number = context.payload.pull_request.number;
-            await github.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number,
-              body: `Terraform plan for changes is uploaded as an artifact (see Actions -> Artifacts).`,
-            });
+            const issue_number = context.payload.pull_request?.number;
+            if (issue_number) {
+              // use the REST client available on `github.rest` in github-script v6
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+                body: `Terraform plan for changes is uploaded as an artifact (see Actions -> Artifacts).`,
+              });
+            } else {
+              core.info('No pull_request found in context; skipping comment.');
+            }
 
   apply:
     name: Apply on main
