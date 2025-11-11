@@ -1,0 +1,13 @@
+# Ignore Terraform and IDE artefacts
+
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+infra-s3/plan.tfplan
+infra-s3/plan.txt
+
+# IntelliJ
+.idea/
+*.iml
