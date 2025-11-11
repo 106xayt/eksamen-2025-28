@@ -57,10 +57,14 @@ jobs:
             -backend-config="key=kandidat-28/infra-s3.tfstate"
 
       # Import er idempotent: første gang state er tom, ellers no-op
-      - name: Import existing bucket to state (idempotent)
+      - name: Import existing bucket to state (pnly if missing)
         run: |
-          terraform state list >/dev/null 2>&1 || true
-          terraform import -no-color aws_s3_bucket.results "${TF_VAR_bucket_name}" || true
+          set -e
+          if terraform state list | grep -q '^aws_s3_bucket\.results$'; then
+          echo "aws_s3_bucket.results already in state. Skipping import."
+          else
+          terraform import -no-color aws_s3_bucket.results "${TF_VAR_bucket_name}"
+          fi
 
       - name: Terraform Format
         run: terraform fmt -check
