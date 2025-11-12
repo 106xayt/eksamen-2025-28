@@ -1,4 +1,3 @@
-# .github/workflows/sam-deploy.yml
 name: SAM Validate & Deploy
 
 on:
@@ -15,7 +14,7 @@ on:
 
 env:
   AWS_REGION: eu-west-1
-  CANDIDATE_NR: "28"   # <-- bytt ved behov
+  CANDIDATE_NR: "28"   # bytt ved behov
 
 concurrency:
   group: sam-${{ github.ref }}
@@ -35,7 +34,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Hopp over reinstall av SAM hvis den allerede finnes på runner
+      # Ikke reinstallér hvis SAM allerede ligger på runneren
       - name: Install SAM CLI (idempotent)
         run: |
           set -euo pipefail
@@ -56,7 +55,9 @@ jobs:
         working-directory: sam-comprehend
         run: |
           set -euo pipefail
-          sam validate --template template.yaml
+          echo "PWD=$(pwd)"; echo "Tree:"; ls -la
+          test -f template.yaml || (echo "template.yaml not found in sam-comprehend/"; exit 2)
+          SAM_CLI_TELEMETRY=0 sam validate --template-file template.yaml --debug
 
       - name: Build
         working-directory: sam-comprehend
@@ -64,7 +65,7 @@ jobs:
           PIP_CACHE_DIR: ~/.cache/pip
         run: |
           set -euo pipefail
-          sam build --use-container=false
+          SAM_CLI_TELEMETRY=0 sam build --use-container=false --debug
 
   deploy:
     if: github.event_name == 'push'
@@ -82,7 +83,7 @@ jobs:
       - name: Install SAM CLI (idempotent)
         run: |
           set -euo pipefail
-          if command -v sam >/div/null 2>&1; then
+          if command -v sam >/dev/null 2>&1; then
             echo "SAM already installed, skipping fresh install."
             sam --version
           else
@@ -106,7 +107,7 @@ jobs:
         working-directory: sam-comprehend
         run: |
           set -euo pipefail
-          sam validate --template template.yaml
+          SAM_CLI_TELEMETRY=0 sam validate --template-file template.yaml --debug
 
       - name: Build
         working-directory: sam-comprehend
@@ -114,7 +115,7 @@ jobs:
           PIP_CACHE_DIR: ~/.cache/pip
         run: |
           set -euo pipefail
-          sam build --use-container=false
+          SAM_CLI_TELEMETRY=0 sam build --use-container=false --debug
 
       - name: Deploy
         working-directory: sam-comprehend
@@ -123,11 +124,12 @@ jobs:
           STACK_NAME="aialpha-sentiment-kandidat-${CANDIDATE_NR}"
           S3_BUCKET_NAME="kandidat-${CANDIDATE_NR}-data"
 
-          sam deploy \
+          SAM_CLI_TELEMETRY=0 sam deploy \
             --template-file .aws-sam/build/template.yaml \
             --stack-name "$STACK_NAME" \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides S3BucketName="$S3_BUCKET_NAME"
+            --parameter-overrides S3BucketName="$S3_BUCKET_NAME" \
+            --debug
