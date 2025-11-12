@@ -1,4 +1,3 @@
-# .github/workflows/sam-deploy.yml
 name: SAM Validate & Deploy
 
 on:
@@ -13,11 +12,14 @@ on:
       - 'sam-comprehend/**'
       - '.github/workflows/sam-deploy.yml'
 
+# Grunnverdier settes her. Ikke forsøk å bygge andre env-variabler av disse i samme blokk.
 env:
   AWS_REGION: eu-west-1
-  CANDIDATE_NR: "28"                       # <- bytt hvis nødvendig
-  STACK_NAME: aialpha-sentiment-kandidat-${{ env.CANDIDATE_NR }}
-  S3_BUCKET_NAME: kandidat-${{ env.CANDIDATE_NR }}-data
+  CANDIDATE_NR: "28"   # <-- bytt dersom nødvendig
+
+concurrency:
+  group: sam-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   pr-validate:
@@ -87,11 +89,15 @@ jobs:
 
       - name: Deploy
         run: |
+          # Bygg navnene ved runtime (kan ikke bruke env-var-substitusjon i env-blokka)
+          STACK_NAME="aialpha-sentiment-kandidat-${CANDIDATE_NR}"
+          S3_BUCKET_NAME="kandidat-${CANDIDATE_NR}-data"
+
           sam deploy \
             --template-file .aws-sam/build/template.yaml \
-            --stack-name "${STACK_NAME}" \
+            --stack-name "$STACK_NAME" \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides S3BucketName="${S3_BUCKET_NAME}"
+            --parameter-overrides S3BucketName="$S3_BUCKET_NAME"
