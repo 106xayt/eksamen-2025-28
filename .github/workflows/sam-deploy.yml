@@ -61,11 +61,9 @@ jobs:
 
       - name: Build
         working-directory: sam-comprehend
-        env:
-          PIP_CACHE_DIR: ~/.cache/pip
         run: |
           set -euo pipefail
-          SAM_CLI_TELEMETRY=0 sam build --use-container=false --debug
+          SAM_CLI_TELEMETRY=0 sam build --debug
 
   deploy:
     if: github.event_name == 'push'
@@ -113,7 +111,7 @@ jobs:
         working-directory: sam-comprehend
         run: |
           set -euo pipefail
-          sam build
+          SAM_CLI_TELEMETRY=0 sam build --debug
 
       - name: Deploy
         working-directory: sam-comprehend
