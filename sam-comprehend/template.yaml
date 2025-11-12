@@ -27,11 +27,11 @@ Resources:
         - S3CrudPolicy:
             BucketName: !Ref S3BucketName
         - Statement:
-          - Effect: Allow
-            Action:
-              - comprehend:DetectSentiment
-              - comprehend:DetectEntities
-            Resource: '*'
+            - Effect: Allow
+              Action:
+                - comprehend:DetectSentiment
+                - comprehend:DetectEntities
+              Resource: '*'
       Events:
         AnalyzeApi:
           Type: Api
