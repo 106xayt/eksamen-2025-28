@@ -7,16 +7,11 @@ Globals:
     Timeout: 30
     MemorySize: 256
     Runtime: python3.11
-  Api:                       # ← ikke under Function
-    EndpointConfiguration: REGIONAL
-    Auth:
-      DefaultAuthorizer: AWS_IAM
-      AddDefaultAuthorizerToCorsPreflight: false
 
 Parameters:
   S3BucketName:
     Type: String
-    Default: kandidat-28-data
+    Default: pgr301-sentiment-data
     Description: S3 bucket for storing sentiment analysis results
 
 Resources:
@@ -28,16 +23,15 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref S3BucketName
-          S3_PREFIX: "midlertidig/"
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref S3BucketName
         - Statement:
-          - Effect: Allow
-            Action:
-              - comprehend:DetectSentiment
-              - comprehend:DetectEntities
-            Resource: '*'
+            - Effect: Allow
+              Action:
+                - comprehend:DetectSentiment
+                - comprehend:DetectEntities
+              Resource: '*'
       Events:
         AnalyzeApi:
           Type: Api
