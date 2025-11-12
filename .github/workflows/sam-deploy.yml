@@ -111,11 +111,9 @@ jobs:
 
       - name: Build
         working-directory: sam-comprehend
-        env:
-          PIP_CACHE_DIR: ~/.cache/pip
         run: |
           set -euo pipefail
-          SAM_CLI_TELEMETRY=0 sam build --use-container=false --debug
+          sam build
 
       - name: Deploy
         working-directory: sam-comprehend
