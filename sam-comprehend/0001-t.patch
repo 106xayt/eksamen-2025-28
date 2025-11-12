@@ -1,0 +1,42 @@
+From 89f364dd44040cf29e754440fbe1982438626b0b Mon Sep 17 00:00:00 2001
+From: 106xayt <arstedist@gmail.com>
+Date: Tue, 11 Nov 2025 10:32:09 -0800
+Subject: [PATCH] t
+
+---
+ .github/workflows/terraform-s3.yml | 10 +++++++---
+ infra-s3/test.txt                  |  2 +-
+ 2 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/.github/workflows/terraform-s3.yml b/.github/workflows/terraform-s3.yml
+index 9fe56cb..c513b75 100644
+--- a/.github/workflows/terraform-s3.yml
++++ b/.github/workflows/terraform-s3.yml
+@@ -57,10 +57,14 @@ jobs:
+             -backend-config="key=kandidat-28/infra-s3.tfstate"
+ 
+       # Import er idempotent: første gang state er tom, ellers no-op
+-      - name: Import existing bucket to state (idempotent)
++      - name: Import existing bucket to state (pnly if missing)
+         run: |
+-          terraform state list >/dev/null 2>&1 || true
+-          terraform import -no-color aws_s3_bucket.results "${TF_VAR_bucket_name}" || true
++          set -e
++          if terraform state list | grep -q '^aws_s3_bucket\.results$'; then
++          echo "aws_s3_bucket.results already in state. Skipping import."
++          else
++          terraform import -no-color aws_s3_bucket.results "${TF_VAR_bucket_name}"
++          fi
+ 
+       - name: Terraform Format
+         run: terraform fmt -check
+diff --git a/infra-s3/test.txt b/infra-s3/test.txt
+index a13c399..bf5b197 100644
+--- a/infra-s3/test.txt
++++ b/infra-s3/test.txt
+@@ -1 +1 @@
+-﻿test
++﻿hei
+-- 
+2.45.1.windows.1
+
