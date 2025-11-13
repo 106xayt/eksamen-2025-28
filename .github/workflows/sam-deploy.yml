@@ -1,4 +1,3 @@
-# .github/workflows/sam-deploy.yml
 name: SAM Validate & Deploy
 
 on:
@@ -15,17 +14,17 @@ on:
 
 env:
   AWS_REGION: eu-west-1
-  CANDIDATE_NR: "28"                       # <- bytt hvis nødvendig
-  STACK_NAME: aialpha-sentiment-kandidat-${{ env.CANDIDATE_NR }}
-  S3_BUCKET_NAME: kandidat-${{ env.CANDIDATE_NR }}-data
+  CANDIDATE_NR: "28"   # bytt ved behov
+
+concurrency:
+  group: sam-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   pr-validate:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sam-comprehend
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,26 +34,41 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install SAM CLI (wget/unzip)
+      # Ikke reinstallér hvis SAM allerede ligger på runneren
+      - name: Install SAM CLI (idempotent)
         run: |
-          sudo apt-get update && sudo apt-get install -y unzip
-          wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
-          unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
-          sudo ./sam-installation/install
-          sam --version
+          set -euo pipefail
+          if command -v sam >/dev/null 2>&1; then
+            echo "SAM already installed, skipping fresh install."
+            sam --version
+          else
+            sudo apt-get update
+            sudo apt-get install -y unzip curl
+            curl -L -o samcli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip || \
+            curl -L -o samcli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux_x86_64.zip
+            unzip -q samcli.zip -d sam-installation
+            sudo ./sam-installation/install --update
+            sam --version
+          fi
 
       - name: Validate
-        run: sam validate --template template.yaml
+        working-directory: sam-comprehend
+        run: |
+          set -euo pipefail
+          echo "PWD=$(pwd)"; echo "Tree:"; ls -la
+          test -f template.yaml || (echo "template.yaml not found in sam-comprehend/"; exit 2)
+          SAM_CLI_TELEMETRY=0 sam validate --template-file template.yaml --debug
 
       - name: Build
-        run: sam build --use-container=false
+        working-directory: sam-comprehend
+        run: |
+          set -euo pipefail
+          SAM_CLI_TELEMETRY=0 sam build --debug
 
   deploy:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: sam-comprehend
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,13 +78,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install SAM CLI (wget/unzip)
+      - name: Install SAM CLI (idempotent)
         run: |
-          sudo apt-get update && sudo apt-get install -y unzip
-          wget https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip
-          unzip aws-sam-cli-linux-x86_64.zip -d sam-installation
-          sudo ./sam-installation/install
-          sam --version
+          set -euo pipefail
+          if command -v sam >/dev/null 2>&1; then
+            echo "SAM already installed, skipping fresh install."
+            sam --version
+          else
+            sudo apt-get update
+            sudo apt-get install -y unzip curl
+            curl -L -o samcli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux-x86_64.zip || \
+            curl -L -o samcli.zip https://github.com/aws/aws-sam-cli/releases/latest/download/aws-sam-cli-linux_x86_64.zip
+            unzip -q samcli.zip -d sam-installation
+            sudo ./sam-installation/install --update
+            sam --version
+          fi
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -80,18 +102,30 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Validate
-        run: sam validate --template template.yaml
+        working-directory: sam-comprehend
+        run: |
+          set -euo pipefail
+          SAM_CLI_TELEMETRY=0 sam validate --template-file template.yaml --debug
 
       - name: Build
-        run: sam build --use-container=false
+        working-directory: sam-comprehend
+        run: |
+          set -euo pipefail
+          SAM_CLI_TELEMETRY=0 sam build --debug
 
       - name: Deploy
+        working-directory: sam-comprehend
         run: |
-          sam deploy \
+          set -euo pipefail
+          STACK_NAME="aialpha-sentiment-kandidat-${CANDIDATE_NR}"
+          S3_BUCKET_NAME="kandidat-${CANDIDATE_NR}-data"
+
+          SAM_CLI_TELEMETRY=0 sam deploy \
             --template-file .aws-sam/build/template.yaml \
-            --stack-name "${STACK_NAME}" \
+            --stack-name "$STACK_NAME" \
             --capabilities CAPABILITY_IAM \
             --resolve-s3 \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
-            --parameter-overrides S3BucketName="${S3_BUCKET_NAME}"
+            --parameter-overrides S3BucketName="$S3_BUCKET_NAME" \
+            --debug
