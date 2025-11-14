@@ -1,4 +1,70 @@
-name: docker-build.yml
+name: Build and push Docker image
+
+# This workflow builds and pushes a Docker image for the sentiment-docker Spring Boot
+# application. It runs only on pushes to the `main` branch and only when files under
+# `sentiment-docker/` change. Using a multi-stage Dockerfile, the resulting image
+# contains only the runtime JAR and a lightweight JVM. The image is tagged with
+# `latest` and a short commit SHA for traceability. Credentials for Docker Hub are
+# provided via repository secrets.
+
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'sentiment-docker/**'
+
+# Default environment variables. The IMAGE_NAME is built using the DOCKER_USERNAME
+# secret, allowing the same workflow to work across forks without changes.
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/sentiment-docker
 
 jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up QEMU for multi-architecture builds (required by buildx)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Set up Docker Buildx builder instance
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Log in to Docker Hub using credentials stored in GitHub Secrets. The
+      # DOCKER_PASSWORD secret can also be a personal access token (recommended).
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN || secrets.DOCKER_PASSWORD }}
+
+      # Extract metadata for the Docker image, including tags and labels. Here we
+      # tag the image with `latest` and `sha-<short_sha>` for reproducibility.
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-,format=short
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # Build and push the Docker image to Docker Hub. The context is the
+      # `sentiment-docker` directory, which contains the Dockerfile and application
+      # code. If the build is successful, the image is pushed with the computed
+      # tags and labels.
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sentiment-docker
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
