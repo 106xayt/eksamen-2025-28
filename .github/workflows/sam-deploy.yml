@@ -14,7 +14,7 @@ on:
 
 env:
   AWS_REGION: eu-west-1
-  CANDIDATE_NR: "28"   # bytt ved behov
+  CANDIDATE_NR: "28"
 
 concurrency:
   group: sam-${{ github.ref }}
@@ -34,7 +34,6 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Ikke reinstallér hvis SAM allerede ligger på runneren
       - name: Install SAM CLI (idempotent)
         run: |
           set -euo pipefail

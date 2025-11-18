@@ -1,5 +1,6 @@
 package com.aialpha.sentiment.service;
 
+import com.aialpha.sentiment.metrics.SentimentMetrics;
 import com.aialpha.sentiment.model.CompanySentiment;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,12 +18,16 @@ public class BedrockService {
 
     private final BedrockRuntimeClient bedrockClient;
     private final ObjectMapper objectMapper;
+    private final SentimentMetrics metrics;
 
     private static final String MODEL_ID = "amazon.nova-micro-v1:0";
 
-    public BedrockService(BedrockRuntimeClient bedrockClient, ObjectMapper objectMapper) {
+    public BedrockService(BedrockRuntimeClient bedrockClient,
+                          ObjectMapper objectMapper,
+                          SentimentMetrics metrics) {
         this.bedrockClient = bedrockClient;
         this.objectMapper = objectMapper;
+        this.metrics = metrics;
     }
 
     public List<CompanySentiment> analyzeSentiment(String text) {
@@ -52,17 +57,38 @@ public class BedrockService {
                 }
                 """, escapeJson(prompt));
 
-            // Invoke Bedrock model
+            // Invoke Bedrock model – vi måler varigheten her
             InvokeModelRequest request = InvokeModelRequest.builder()
                     .modelId(MODEL_ID)
                     .body(SdkBytes.fromUtf8String(requestBody))
                     .build();
 
+            long startNs = System.nanoTime();
             InvokeModelResponse response = bedrockClient.invokeModel(request);
+            long durationMs = (System.nanoTime() - startNs) / 1_000_000;
+
+            // Timer-metrikk: varighet på Bedrock-kallet
+            metrics.recordDuration(durationMs, "all", MODEL_ID);
+
             String responseBody = response.body().asUtf8String();
 
             // Parse Nova's response
-            return parseNovaResponse(responseBody);
+            List<CompanySentiment> results = parseNovaResponse(responseBody);
+
+            // Gauge: hvor mange selskaper fant vi i denne analysen?
+            metrics.recordCompaniesDetected(results.size());
+
+            // Counter + DistributionSummary per selskap
+            for (CompanySentiment cs : results) {
+                String company = cs.getCompany();
+                String sentiment = cs.getSentiment();
+                double confidence = cs.getConfidence();
+
+                metrics.recordAnalysis(sentiment, company);
+                metrics.recordConfidence(confidence, sentiment, company);
+            }
+
+            return results;
 
         } catch (Exception e) {
             throw new RuntimeException("Failed to analyze sentiment with Bedrock: " + e.getMessage(), e);
@@ -155,10 +181,10 @@ public class BedrockService {
      */
     private String escapeJson(String text) {
         return text.replace("\\", "\\\\")
-                   .replace("\"", "\\\"")
-                   .replace("\n", "\\n")
-                   .replace("\r", "\\r")
-                   .replace("\t", "\\t");
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     public String getModelId() {
