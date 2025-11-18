@@ -13,7 +13,6 @@ resource "aws_s3_bucket" "results" {
   }
 }
 
-# Block all public access to the bucket. This is a security best practice.
 resource "aws_s3_bucket_public_access_block" "results" {
   bucket                  = aws_s3_bucket.results.id
   block_public_acls       = true
@@ -22,7 +21,6 @@ resource "aws_s3_bucket_public_access_block" "results" {
   restrict_public_buckets = true
 }
 
-# Enable server‑side encryption with AES256 to protect data at rest.
 resource "aws_s3_bucket_server_side_encryption_configuration" "results" {
   bucket = aws_s3_bucket.results.id
   rule {
@@ -32,7 +30,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "results" {
   }
 }
 
-# Optional versioning controlled by variable.
 resource "aws_s3_bucket_versioning" "results" {
   bucket = aws_s3_bucket.results.id
   count  = var.enable_versioning ? 1 : 0
@@ -41,7 +38,6 @@ resource "aws_s3_bucket_versioning" "results" {
   }
 }
 
-# Lifecycle configuration for objects under the 'midlertidig/' prefix.
 resource "aws_s3_bucket_lifecycle_configuration" "results" {
   bucket = aws_s3_bucket.results.id
 
@@ -53,7 +49,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "results" {
       prefix = "midlertidig/"
     }
 
-    # Transition objects to cheaper storage (e.g., Glacier) if enabled.
     dynamic "transition" {
       for_each = var.enable_glacier_tiering ? [1] : []
       content {
@@ -62,7 +57,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "results" {
       }
     }
 
-    # Expire (delete) objects after a certain number of days.
     expiration {
       days = var.days_to_expire
     }

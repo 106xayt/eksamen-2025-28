@@ -11,10 +11,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-########################
-# SNS topic + e-post   #
-########################
-
 resource "aws_sns_topic" "sentiment_alarm_topic" {
   name = "${var.metrics_namespace}-sentiment-alarms"
 }
@@ -25,9 +21,6 @@ resource "aws_sns_topic_subscription" "sentiment_alarm_email" {
   endpoint  = var.alarm_email
 }
 
-########################
-# CloudWatch Alarm     #
-########################
 
 resource "aws_cloudwatch_metric_alarm" "latency_high" {
   alarm_name          = "${var.metrics_namespace}-latency-high"
@@ -36,14 +29,14 @@ resource "aws_cloudwatch_metric_alarm" "latency_high" {
   evaluation_periods  = 1
   threshold           = 5000                        # 5 sekunder
 
-  # Viktig: bruk det faktiske metrikk-navnet fra Micrometer/CloudWatch
+
   metric_name         = "sentiment.analysis.duration.avg"
   namespace           = var.metrics_namespace
   statistic           = "Average"
   period              = 60                           # 60 s vindu
   treat_missing_data  = "notBreaching"
 
-  # Aggregert timer i SentimentMetrics er tagget med candidate=28
+
   dimensions = {
     candidate = var.candidate_dimension
   }
@@ -52,14 +45,10 @@ resource "aws_cloudwatch_metric_alarm" "latency_high" {
   ok_actions    = [aws_sns_topic.sentiment_alarm_topic.arn]
 }
 
-########################
-# CloudWatch Dashboard #
-########################
 
 resource "aws_cloudwatch_dashboard" "sentiment_dashboard" {
   dashboard_name = "${var.metrics_namespace}-dashboard"
 
-  // Enkelt JSON-dashboard med 2 tidsserier + ett tall-widget
   dashboard_body = <<EOF
 {
   "widgets": [

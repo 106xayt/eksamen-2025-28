@@ -7,14 +7,12 @@ variable "aws_region" {
 variable "metrics_namespace" {
   description = "CloudWatch namespace for custom metrics"
   type        = string
-  // Må matche MetricsConfig: cloudwatch.namespace = kandidat-28
   default     = "kandidat-28"
 }
 
 variable "candidate_dimension" {
   description = "Value used in the 'candidate' dimension on metrics"
   type        = string
-  // I SentimentMetrics har vi tag("candidate", "28")
   default     = "28"
 }
 
