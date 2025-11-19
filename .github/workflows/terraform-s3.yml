@@ -56,7 +56,6 @@ jobs:
             -backend-config="region=eu-west-1" \
             -backend-config="key=kandidat-28/infra-s3.tfstate"
 
-      # Import er idempotent: første gang state er tom, ellers no-op
       - name: Import existing bucket to state (pnly if missing)
         run: |
           set -e
@@ -83,7 +82,6 @@ jobs:
           name: terraform-plan
           path: infra-s3/tfplan
 
-      # Kjør også en plan på main før apply (så apply bruker samme plan)
       - name: Terraform Plan (main)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: terraform plan -no-color -out=tfplan
