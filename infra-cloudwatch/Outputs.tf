@@ -1,3 +1,4 @@
+//outputs
 output "dashboard_name" {
   description = "Name of the created CloudWatch dashboard"
   value       = aws_cloudwatch_dashboard.sentiment_dashboard.dashboard_name
