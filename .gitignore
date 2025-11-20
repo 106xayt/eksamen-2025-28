@@ -1,13 +1,14 @@
-# Ignore Terraform and IDE artefacts
-
-.terraform/
-.terraform.lock.hcl
+**/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfplan
+crash.log
 infra-s3/plan.tfplan
 infra-s3/plan.txt
-
-# IntelliJ
+**/.aws-sam/
+**/.venv/
+**/target/
+**/__pycache__/
 .idea/
 *.iml
+.vscode/
