@@ -148,6 +148,7 @@ Her vises skjermbilder av metrikker konfigurert i applikasjonen.
 [CloudWatch sentiment companies](media/oppgave4a-metric-sentiment-analysis-companies-detected.png)
 
 4b
+
 [Dashboard](media/oppgave4b-dashboard.png)
 
 [Alarm](media/oppgave4b-alarm.png)
